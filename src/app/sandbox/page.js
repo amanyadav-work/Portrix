@@ -1,12 +1,12 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { WebContainer } from '@webcontainer/api'
 import stripAnsi from 'strip-ansi';
 import { Editor } from '@monaco-editor/react'
 import JSZip from 'jszip'
 import { FileTree } from '@/components/FileTree.js'
-import { buildTree, getFileLanguage, handleAddSceneRendererFile, handleInjectSceneRenderer, updateSceneSettingsFile } from '@/utils/sandbox'
+import { buildTree, getFileLanguage, updateSceneSettingsFile } from '@/utils/sandbox'
 import SandboxPreview from './_components/SandboxPreview'
 import TerminalWindow from './_components/TerminalWindow';
 import { entryCandidates } from '@/constants/entryCandidates';
@@ -23,9 +23,16 @@ import Loader from '@/components/ui/Loader';
 
 
 
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SandboxPage />
+    </Suspense>
+  );
+}
 
 
-export default function SandboxPage() {
+const SandboxPage = () => {
   const [webcontainerInstance, setWebcontainerInstance] = useState(null)
   const [loading, setLoading] = useState(true);
   const [consoleLogs, setConsoleLogs] = useState('');
@@ -47,7 +54,7 @@ export default function SandboxPage() {
 
 
   useEffect(() => {
-    if (!repo) return;
+    if (!repo || webcontainerInstance || files) return;
 
     const setupSandbox = async () => {
       try {
@@ -138,7 +145,7 @@ export default function SandboxPage() {
     };
 
     setupSandbox();
-  }, [repo]);
+  }, [repo, webcontainerInstance, files]);
 
 
   useEffect(() => {
@@ -301,107 +308,107 @@ export default function SandboxPage() {
     window.scrollTo(0, 0);
 
     if (isEdit) {
-       if (webcontainerInstance) {
-        const updatedData={
-  "sec-1": {
-    "name": "sec-1",
-    "modelTransform": {
-      "posX": 1.9999999999999991,
-      "posY": 0,
-      "posZ": 3.9000000000000004,
-      "rotX": 0,
-      "rotY": 0,
-      "rotZ": 0
-    },
-    "background": {
-      "type": "solid",
-      "color1": "#580000",
-      "color2": "#350000"
-    },
-    "lights": [
-      {
-        "id": 1751443059446.0015,
-        "type": "Directional",
-        "intensity": 25,
-        "color": "#ff3300",
-        "position": [
-          2,
-          5,
-          3
-        ],
-        "castShadow": false,
-        "angle": 0,
-        "penumbra": 0,
-        "distance": 0,
-        "decay": 1
-      },
-      {
-        "id": 1751443059446.1401,
-        "type": "Ambient",
-        "intensity": 28,
-        "color": "#803030",
-        "position": [
-          0,
-          0,
-          0
-        ],
-        "castShadow": false,
-        "angle": 0,
-        "penumbra": 0,
-        "distance": 0,
-        "decay": 1
-      }
-    ],
-    "selectedAnimation": "01_Sphere_bot_Roll",
-    "loopCount": "Infinity"
-  },
-  "sec-2": {
-    "name": "sec-2",
-    "modelTransform": {
-      "posX": 3.0000000000000004,
-      "posY": 0,
-      "posZ": 0,
-      "rotX": 0,
-      "rotY": 0,
-      "rotZ": 0
-    },
-    "background": {
-      "type": "solid",
-      "color1": "#131313",
-      "color2": "#350000"
-    },
-    "lights": [
-      {
-        "id": 1751443133070.8755,
-        "type": "Directional",
-        "intensity": 9.3,
-        "color": "#ffffff",
-        "position": [
-          88.7,
-          56.1,
-          0
-        ],
-        "castShadow": false,
-        "angle": 0,
-        "penumbra": 0,
-        "distance": 0,
-        "decay": 1
-      }
-    ],
-    "selectedAnimation": "Idle",
-    "loopCount": "Infinity"
-  }
-}
-      
-            updateSceneSettingsFile({
-              webcontainerInstance,
-              updatedData: updatedData,
-              setFiles,
-              files,
-              setFileTree,
-              buildTree,
-            });
+      if (webcontainerInstance) {
+        const updatedData = {
+          "sec-1": {
+            "name": "sec-1",
+            "modelTransform": {
+              "posX": 1.9999999999999991,
+              "posY": 0,
+              "posZ": 3.9000000000000004,
+              "rotX": 0,
+              "rotY": 0,
+              "rotZ": 0
+            },
+            "background": {
+              "type": "solid",
+              "color1": "#580000",
+              "color2": "#350000"
+            },
+            "lights": [
+              {
+                "id": 1751443059446.0015,
+                "type": "Directional",
+                "intensity": 25,
+                "color": "#ff3300",
+                "position": [
+                  2,
+                  5,
+                  3
+                ],
+                "castShadow": false,
+                "angle": 0,
+                "penumbra": 0,
+                "distance": 0,
+                "decay": 1
+              },
+              {
+                "id": 1751443059446.1401,
+                "type": "Ambient",
+                "intensity": 28,
+                "color": "#803030",
+                "position": [
+                  0,
+                  0,
+                  0
+                ],
+                "castShadow": false,
+                "angle": 0,
+                "penumbra": 0,
+                "distance": 0,
+                "decay": 1
+              }
+            ],
+            "selectedAnimation": "01_Sphere_bot_Roll",
+            "loopCount": "Infinity"
+          },
+          "sec-2": {
+            "name": "sec-2",
+            "modelTransform": {
+              "posX": 3.0000000000000004,
+              "posY": 0,
+              "posZ": 0,
+              "rotX": 0,
+              "rotY": 0,
+              "rotZ": 0
+            },
+            "background": {
+              "type": "solid",
+              "color1": "#131313",
+              "color2": "#350000"
+            },
+            "lights": [
+              {
+                "id": 1751443133070.8755,
+                "type": "Directional",
+                "intensity": 9.3,
+                "color": "#ffffff",
+                "position": [
+                  88.7,
+                  56.1,
+                  0
+                ],
+                "castShadow": false,
+                "angle": 0,
+                "penumbra": 0,
+                "distance": 0,
+                "decay": 1
+              }
+            ],
+            "selectedAnimation": "Idle",
+            "loopCount": "Infinity"
           }
+        }
+
+        updateSceneSettingsFile({
+          webcontainerInstance,
+          updatedData: updatedData,
+          setFiles,
+          files,
+          setFileTree,
+          buildTree,
+        });
+      }
       document.body.classList.remove('overflow-hidden', 'no-scrollbar');
     } else {
       document.body.classList.add('overflow-hidden', 'no-scrollbar');
@@ -467,7 +474,7 @@ export default function SandboxPage() {
             </div>}
             {webcontainerInstance && <div className={`${!isEdit ? 'visible' : 'invisible'}`}>
               <SandboxPreview logs={consoleLogs} url={previewUrl} webcontainerInstance={webcontainerInstance} />
-              {( previewUrl) && <FloatingPanel
+              {(previewUrl) && <FloatingPanel
                 modelPath={modelPath}
                 files={files}
                 setFiles={setFiles}

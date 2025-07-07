@@ -19,7 +19,6 @@ export async function GET(req) {
       redirect: 'follow',
     });
 
-    console.log("Response:::",response,githubZipUrl)
     if (!response.ok) {
       return new Response('Failed to fetch zip', { status: 500 });
     }
@@ -34,8 +33,7 @@ export async function GET(req) {
       },
     });
   } catch (err) {
-      console.log("Error fetching zip:", err);
-
+    console.error("Error fetching zip:", err);
     return new Response('Error fetching zip', { status: 500 });
   }
 }

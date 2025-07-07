@@ -1,5 +1,5 @@
 'use client';
-import { getToken } from '@/utils/auth';
+import { getToken } from '@/lib/utils';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 export default function useFetch({
@@ -9,8 +9,8 @@ export default function useFetch({
   payload = null,
   headers = {},
   withAuth = true,
-  onSuccess = () => {},
-  onError = () => {},
+  onSuccess = () => { },
+  onError = () => { },
 } = {}) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -63,7 +63,7 @@ export default function useFetch({
       if (reqWithAuth) {
         const token = getToken();
         if (!token) return null;
-        finalHeaders['Token'] = token;
+        finalHeaders['Authorization'] = `Bearer ${token}`;
       }
 
       const isFormData = reqPayload instanceof FormData;

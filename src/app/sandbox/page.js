@@ -99,6 +99,10 @@ const SandboxPage = () => {
         setFileTree(buildTree(files));
 
         // 2. Boot WebContainer
+        if (webcontainerInstance) {
+          await webcontainerInstance.teardown(); // Clean up previous instance if exists
+
+        };
         const instance = await WebContainer.boot();
         setWebcontainerInstance(instance);
 
@@ -171,7 +175,7 @@ const SandboxPage = () => {
       ]);
       extraInstall.output.pipeTo(new WritableStream({
         write(data) {
-          setConsoleLogs(`[setup install] ${stripAnsi(data)}`);
+          setConsoleLogs(`[Setup Install] ${stripAnsi(data)}`);
         }
       }));
 
@@ -179,7 +183,6 @@ const SandboxPage = () => {
 
 
       webcontainerInstance.on('server-ready', (port, url) => {
-        setConsoleLogs(`[server-ready] Server running at ${url}`);
         setPreviewUrl(url);
       });
 
@@ -207,8 +210,9 @@ const SandboxPage = () => {
     runDevServer();
 
     return () => {
+      document.body.classList.remove('overflow-hidden', 'no-scrollbar');
       if (webcontainerInstance) {
-        webcontainerInstance.teardown?.(); // If supported
+        webcontainerInstance.teardown();
       }
     }
   }, [webcontainerInstance, entryFile]);
@@ -421,58 +425,57 @@ const SandboxPage = () => {
     <div className={`main-container h-full ${!isEdit && 'overflow-hidden no-scrollbar'} `}>
 
 
-      {error && (
-        <div className="fixed inset-0 z-50 bg-red-900 bg-opacity-90 text-white flex items-center justify-center text-center px-4">
+      {false && (
+        <div className="fixed inset-0 z-50 bg-red-900 bg-opacity-90 flex items-center justify-center text-center px-4">
           <div>
-            <p className="text-xl font-bold">Error</p>
+            <p className="text-sm font-bold">Error</p>
             <p>{error}</p>
           </div>
         </div>
       )}
 
       {loading ? (
-        <Loader
+        <Loader fullScreen
           text={`Installing deps for ${repo}`}
         />
       ) :
         (<>
 
+          {previewUrl && <div className='fixed z-50 bottom-0 right-0 w-fit  p-1 rounded-t-lg flex items-center gap-3'>
+            <Button
+              onClick={() => setIsEdit(!isEdit)} size='sm'>
+              {isEdit ? <X size={14} /> : <Edit3 size={14} />}
+              {isEdit ? 'Exit Edit Mode' : 'Edit Code'}
+            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm">Add Model.jsx</Button>
+              </DialogTrigger>
+              <AddModelModal
+                setModelPath={setModelPath}
+                webcontainerInstance={webcontainerInstance}
+                setFiles={setFiles}
+                files={files}
+                setFileTree={setFileTree}
+              />
+            </Dialog>
+
+            <Button onClick={handleDownloadZip} size='sm'>
+              Download ZIP
+            </Button>
+            <Button size='sm'>
+              <Link
+                href={`/webcontainer/connect/${encodeURIComponent(previewUrl)}`}
+                size="sm"
+                target="_blank"
+              >
+                Show Preview
+              </Link>
+            </Button>
+
+          </div>}
           {/* Sandbox Preview  */}
-          <section className="sandbox-preview relative w-full h-full">
-            {previewUrl && <div className='fixed z-50 bottom-0 right-0 w-fit bg-gray-800 text-white p-1 rounded-t-lg flex items-center gap-3'>
-              <Button
-                onClick={() => setIsEdit(!isEdit)} size='sm'>
-                {isEdit ? <X size={14} /> : <Edit3 size={14} />}
-                {isEdit ? 'Exit Edit Mode' : 'Edit Code'}
-              </Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button size="sm">Add Model.jsx</Button>
-                </DialogTrigger>
-                <AddModelModal
-                  setModelPath={setModelPath}
-                  webcontainerInstance={webcontainerInstance}
-                  setFiles={setFiles}
-                  files={files}
-                  setFileTree={setFileTree}
-                />
-              </Dialog>
-
-              <Button onClick={handleDownloadZip} size='sm'>
-                Download ZIP
-              </Button>
-              <Button size='sm'>
-                <Link
-                  href={`/webcontainer/connect/${encodeURIComponent(previewUrl)}`}
-                  size="sm"
-                  target="_blank"
-                >
-                  Show Preview
-                </Link>
-              </Button>
-
-            </div>}
-            {webcontainerInstance && <div className={`${!isEdit ? 'visible' : 'invisible'}`}>
+          {webcontainerInstance && <section className={`sandbox-preview relative w-full h-full ${!isEdit ? 'block' : 'hidden'}`}>
               <SandboxPreview logs={consoleLogs} url={previewUrl} webcontainerInstance={webcontainerInstance} />
               {(previewUrl) && <FloatingPanel
                 modelPath={modelPath}
@@ -483,12 +486,11 @@ const SandboxPage = () => {
                 webcontainerInstance={webcontainerInstance}
               />
               }
-            </div>
-            }
           </section>
+          }
 
           {(isEdit && previewUrl) && <>
-            <main className="content-area p-1 bg-black">
+            <main className="content-area p-1 ">
               {/* File Tree */}
               <aside className="file-tree-pane">
                 {fileTree && (
@@ -498,11 +500,11 @@ const SandboxPage = () => {
 
               {/* Editor */}
               <section className="editor-pane">
-                <h2 className="px-4 py-3 text-white font-semibold text-lg">Repo: {repo}</h2>
+                <h2 className="px-4 py-3 font-semibold text-lg">Repo: {repo}</h2>
 
                 <div className="editor-wrapper">
                   {(selectedFile && imageUrls[selectedFile]) ? (
-                    <div className="p-4 bg-gray-900 rounded max-h-[70vh] overflow-auto">
+                    <div className="p-4  rounded max-h-[70vh] overflow-auto">
                       <img
                         src={imageUrls[selectedFile]}
                         alt={selectedFile}
@@ -511,7 +513,7 @@ const SandboxPage = () => {
                     </div>
                   ) : (fileContent || selectedFile) && webcontainerInstance && entryFile ? (
                     <Editor
-                      height="70vh"
+                      height="100%"
                       width="100%"
                       language={getFileLanguage(selectedFile)}
                       theme="vs-dark"

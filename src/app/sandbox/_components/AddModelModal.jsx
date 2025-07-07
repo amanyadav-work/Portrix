@@ -13,9 +13,18 @@ import { toast } from 'sonner';
 import { handleAddSceneRendererFile, handleInjectSceneRenderer } from '@/utils/sandbox';
 import useFetch from '@/hooks/useFetch';
 import { DropzoneField } from '@/components/DropzoneField';
+import { useUser } from '@/contexts/UserContext';
 
-const AddModelModal = ({ setModelPath, webcontainerInstance, setFiles, files, setFileTree }) => {
+const AddModelModal = ({
+  setModelPath,
+  webcontainerInstance,
+  setFiles,
+  files,
+  setFileTree,
+  sandboxId=Math.random().toString(36).substring(2, 15), // Default sandboxId if not provided
+}) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const { user } = useUser();
 
   const { data, error, isLoading, refetch } = useFetch({
     url: '/api/upload',
@@ -55,14 +64,7 @@ const AddModelModal = ({ setModelPath, webcontainerInstance, setFiles, files, se
   });
 
   const handleAddModel = async () => {
-    if (selectedFiles.length === 0) {
-      toast.error('Please select a .glb file');
-      return;
-    }
-
     const file = selectedFiles[0];
-    const modelId = `model-${Date.now()}`;
-
     const reader = new FileReader();
     reader.readAsDataURL(file);
 
@@ -71,7 +73,9 @@ const AddModelModal = ({ setModelPath, webcontainerInstance, setFiles, files, se
         await refetch({
           payload: {
             data: reader.result,
-            modelId,
+            userId: user._id,
+            sandboxId,
+            name: file.name,
           },
         });
       } catch (err) {

@@ -1,7 +1,9 @@
 import { Outfit } from "next/font/google";
 import "./globals.css";
-import { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { UserProvider } from "@/contexts/UserContext";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -16,11 +18,32 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <body className={`${outfit.variable} antialiased`}>
-        {children}
-         <Toaster />
+        <UserProvider>
+          <SidebarProvider defaultOpen={false}>
+            <div className="w-full">
+
+              <AppSidebar />
+
+              {children}
+              <Toaster
+                duration={2000}
+                toastOptions={{
+                  classNames: {
+                    success: '!bg-green-700 !text-white',
+                    error: '!bg-red-700 !text-white',
+                    info: '!bg-blue-500 !text-white',
+                    warning: '!bg-yellow-500 !text-black',
+                  },
+                }}
+              />
+            </div>
+
+          </SidebarProvider>
+
+        </UserProvider>
       </body>
-    </html>
+    </html >
   );
 }

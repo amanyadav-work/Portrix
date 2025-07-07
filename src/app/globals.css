@@ -6,7 +6,9 @@
 html {
   scroll-behavior: smooth;
 }
-html,body {
+
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -78,12 +80,15 @@ body {
 
 /* In your global CSS file */
 .no-scrollbar {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
 }
 
 .no-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
+  /* Chrome, Safari, Opera */
 }
 
 /* For your container and panes */
@@ -96,11 +101,13 @@ body {
 .content-area {
   display: flex;
   flex: 1 1 auto;
-  gap: 1rem; /* space between file tree and editor */
+  gap: 1rem;
+  /* space between file tree and editor */
 }
 
 .file-tree-pane {
-  width: 280px; /* fixed width for file tree */
+  width: 280px;
+  /* fixed width for file tree */
   background: var(--file-tree-bg, #1e1e1e);
   border-right: 1px solid #333;
   overflow-y: auto;
@@ -181,48 +188,124 @@ body {
 }
 
 .dark {
-  --background: oklch(0.147 0.004 49.25);
-  --foreground: oklch(0.985 0.001 106.423);
-  --card: oklch(0.216 0.006 56.043);
-  --card-foreground: oklch(0.985 0.001 106.423);
-  --popover: oklch(0.216 0.006 56.043);
-  --popover-foreground: oklch(0.985 0.001 106.423);
-  --primary: oklch(0.923 0.003 48.717);
-  --primary-foreground: oklch(0.216 0.006 56.043);
-  --secondary: oklch(0.268 0.007 34.298);
-  --secondary-foreground: oklch(0.985 0.001 106.423);
-  --muted: oklch(0.268 0.007 34.298);
-  --muted-foreground: oklch(0.709 0.01 56.259);
-  --accent: oklch(0.268 0.007 34.298);
-  --accent-foreground: oklch(0.985 0.001 106.423);
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: #121212;
+  /* slate-900-like */
+  --foreground: oklch(0.98 0.001 250);
+  /* light gray text */
+
+  --card: oklch(0.22 0.015 270);
+  /* soft dark card */
+  --card-foreground: oklch(0.98 0.001 250);
+
+  --popover: oklch(0.22 0.015 270);
+  --popover-foreground: oklch(0.98 0.001 250);
+
+  --primary: #3ecf8e;
+  /* Supabase green/teal */
+  --primary-foreground: oklch(0.1 0.01 270);
+  /* dark text on button */
+
+  --secondary: oklch(0.25 0.01 270);
+  /* low contrast surface */
+  --secondary-foreground: oklch(0.95 0.001 250);
+
+  --muted: oklch(0.25 0.01 270);
+  --muted-foreground: oklch(0.7 0.01 270);
+
+  --accent: oklch(0.3 0.02 180);
+  /* subtle green accent */
+  --accent-foreground: oklch(0.98 0.001 250);
+
+  --destructive: oklch(0.65 0.18 25);
+  /* muted red */
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.553 0.013 58.071);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.216 0.006 56.043);
-  --sidebar-foreground: oklch(0.985 0.001 106.423);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0.001 106.423);
-  --sidebar-accent: oklch(0.268 0.007 34.298);
-  --sidebar-accent-foreground: oklch(0.985 0.001 106.423);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.55 0.01 270);
+  /* faint ring color */
+
+  --chart-1: oklch(0.5 0.2 260);
+  --chart-2: oklch(0.65 0.15 160);
+  --chart-3: oklch(0.75 0.18 70);
+  --chart-4: oklch(0.6 0.25 300);
+  --chart-5: oklch(0.6 0.22 20);
+
+  --sidebar: oklch(0.22 0.015 270);
+  --sidebar-foreground: oklch(0.95 0.001 250);
+  --sidebar-primary: oklch(0.75 0.2 180);
+  --sidebar-primary-foreground: oklch(0.1 0.01 270);
+  --sidebar-accent: oklch(0.3 0.02 180);
+  --sidebar-accent-foreground: oklch(0.95 0.001 250);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.553 0.013 58.071);
+  --sidebar-ring: oklch(0.55 0.01 270);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
-button{
+button,
+a,
+label {
   cursor: pointer;
+}
+
+.my-container {
+  width: 100%;
+  @media (width >=40rem
+
+    /* 640px */
+  ) {
+    max-width: 40rem
+      /* 640px */
+    ;
+  }
+
+  @media (width >=48rem
+
+    /* 768px */
+  ) {
+    max-width: 48rem
+      /* 768px */
+    ;
+  }
+
+  @media (width >=64rem
+
+    /* 1024px */
+  ) {
+    max-width: 64rem
+      /* 1024px */
+    ;
+  }
+
+  @media (width >=1150px) {
+    max-width: 1150px;
+  }
+
+  @media (width >=90rem
+
+    /* 1536px */
+  ) {
+    max-width: 90rem
+      /* 1536px */
+    ;
+  }
+}
+
+.navbar-dark {
+  position: fixed;
+  background-color: transparent;
+  background-image: radial-gradient(#12121273 1px, #0345c8, #121212fc 1px);
+  background-size: 4px 4px;
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  -webkit-mask: linear-gradient(rgb(235, 0, 0) 60%, rgba(255, 0, 0, 0.951) 100%);
+  mask: linear-gradient(rgb(252, 1, 1) 60%, rgba(56, 2, 2, 0) 100%);
+  opacity: 1;
 }

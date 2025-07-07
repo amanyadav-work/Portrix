@@ -20,7 +20,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <main className="h-screen flex flex-col items-center justify-center ">
       <div className="w-full max-w-md space-y-6">
         <h1 className="text-3xl font-bold text-center">Paste GitHub Repo URL</h1>
 

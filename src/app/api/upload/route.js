@@ -1,25 +1,31 @@
-// app/api/upload/route.js
-import { v2 as cloudinary } from 'cloudinary';
+import { uploadModelGLB } from '@/lib/cloudinary';
+import { connectToDB } from '@/lib/mongoose';
+import Model from '@/models/Model';
 import { NextResponse } from 'next/server';
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
 export async function POST(req) {
-  const body = await req.json();
-  const { data, modelId } = body;
-
   try {
-    const uploaded = await cloudinary.uploader.upload(data, {
-      resource_type: 'raw',
-      public_id: `models/${modelId}.glb`, // 👈 ADD .glb extension here
-    });
+    const body = await req.json();
+    const { data, userId, sandboxId, name } = body;
 
-    return NextResponse.json({ url: uploaded.secure_url });
+    if (!data || !userId || !sandboxId) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    await connectToDB();
+
+    const url = await uploadModelGLB(data, userId, sandboxId);
+
+    // Upsert: if model for this sandbox exists, update it; else create new
+    const model = await Model.findOneAndUpdate(
+      { userId, sandboxId },
+      { url, name },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return NextResponse.json({ url: model.url, model });
   } catch (err) {
+    console.error('[UPLOAD ERROR]', err);
     return NextResponse.json({ error: 'Upload failed', details: err.message }, { status: 500 });
   }
 }

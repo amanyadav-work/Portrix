@@ -1,5 +1,5 @@
 import { uploadModelGLB } from '@/lib/cloudinary';
-import { connectToDB } from '@/lib/mongoose';
+import { dbConnect } from '@/lib/mongoose';
 import Model from '@/models/Model';
 import { NextResponse } from 'next/server';
 
@@ -12,7 +12,7 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    await connectToDB();
+    await dbConnect();
 
     const url = await uploadModelGLB(data, userId, sandboxId);
 

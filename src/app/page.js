@@ -100,7 +100,7 @@ const Home = () => {
                 Skip the bloat. Build your pipeline smarter.
               </h2>
               <p className="text-muted-text max-w-2xl mx-auto mb-6">
-                Whether you're preparing game-ready assets, previewing character rigs, or sharing iterations with your team — absento.ai gives you speed without sacrifice.
+                Whether you&apos;re preparing game-ready assets, previewing character rigs, or sharing iterations with your team — absento.ai gives you speed without sacrifice.
               </p>
               <Link href="/sandbox">
                 <Button size="lg">Launch Viewer</Button>

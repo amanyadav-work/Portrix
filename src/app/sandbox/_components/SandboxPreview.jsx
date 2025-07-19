@@ -23,7 +23,7 @@ export default function SandboxPreview({ logs, url }) {
         </div>
       ) : (
         <>
-          <div className='absolute bottom-0 left-0 w-fit bg-gray-800 text-white p-1 rounded-t-lg flex items-center gap-3'>
+          <div className='absolute bottom-0 truncate overflow-ellipsis max-w-[50%] left-0 w-fit bg-gray-800 text-white p-1 rounded-t-lg flex items-center gap-3'>
             {logs}
             <div className="flex justify-end p-0.5">
               <button

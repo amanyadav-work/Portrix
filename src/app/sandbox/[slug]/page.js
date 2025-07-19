@@ -1,14 +1,12 @@
 'use client'
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { WebContainer } from '@webcontainer/api'
 import stripAnsi from 'strip-ansi';
 import { Editor } from '@monaco-editor/react'
 import JSZip from 'jszip'
 import { FileTree } from '@/components/FileTree.js'
 import { buildTree, getFileLanguage, updateSceneSettingsFile } from '@/utils/sandbox'
-import SandboxPreview from './_components/SandboxPreview'
-import TerminalWindow from './_components/TerminalWindow';
 import { entryCandidates } from '@/constants/entryCandidates';
 import { Edit3, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,10 +14,15 @@ import {
   Dialog,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import AddModelModal from './_components/AddModelModal';
-import FloatingPanel from './_components/FloatingPanel';
 import Link from 'next/link';
-import Loader from '@/components/ui/Loader';
+import useFetch from '@/hooks/useFetch';
+import AddModelModal from '../_components/AddModelModal';
+import FloatingPanel from '../_components/FloatingPanel';
+import SandboxPreview from '../_components/SandboxPreview';
+import TerminalWindow from '../_components/TerminalWindow';
+import Loader from './_components/Loader';
+import { convertFilesToZipData, extractFilesFromZipData } from '@/utils/zipUtils';
+import { toast } from 'sonner';
 
 
 
@@ -33,10 +36,11 @@ export default function Page() {
 
 
 const SandboxPage = () => {
+
+  const { slug } = useParams();
   const [webcontainerInstance, setWebcontainerInstance] = useState(null)
   const [loading, setLoading] = useState(true);
   const [consoleLogs, setConsoleLogs] = useState('');
-  const [depsInstallOutput, setdepsInstallOutput] = useState('')
   const [previewUrl, setPreviewUrl] = useState('');
   const [isEdit, setIsEdit] = useState(false)
   const [fileContent, setFileContent] = useState('')
@@ -45,180 +49,200 @@ const SandboxPage = () => {
   const [fileTree, setFileTree] = useState(null);
   const [selectedFile, setSelectedFile] = useState('');
   const [imageUrls, setImageUrls] = useState({});
-  const [modelPath, setModelPath] = useState('')
+  const [modelInfo, setModelInfo] = useState('')
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const searchParams = useSearchParams()
   const repo = searchParams.get('repo')
-  const [error, setError] = useState(null);
   const hasBootedRef = useRef(false);
+  const [statusStep, setStatusStep] = useState('Initializing...');
 
 
 
-  useEffect(() => {
-    if (!repo || hasBootedRef.current) return;
+  const bufferedLog = (line) => {
+    const cleanLine = stripAnsi(line).trim();
+
+    // If line is special but empty after trimming, ignore it.
+    const isSpecial = cleanLine.includes('[extra]') || cleanLine.includes('[npm install]');
+    const specialContent = cleanLine.replace(/\[extra\]|\[npm install\]/g, '').trim();
+
+    if (isSpecial && specialContent === '') {
+      // Ignore empty special lines completely
+      return;
+    }
+
+    setConsoleLogs(prev => {
+      const lines = prev ? prev.split('\n') : [];
+
+      if (isSpecial) {
+        if (lines.length > 0) {
+          const lastLine = lines[lines.length - 1];
+          const lastIsSpecial = lastLine.includes('[extra]') || lastLine.includes('[npm install]');
+          if (lastIsSpecial) {
+            lines[lines.length - 1] = cleanLine; // Replace last special line
+          } else {
+            lines.push(cleanLine); // Append if last line not special
+          }
+        } else {
+          lines.push(cleanLine); // No previous logs, just add
+        }
+      } else {
+        lines.push(cleanLine);
+      }
+
+      return lines.join('\n');
+    });
+  };
+
+
+
+
+  const {
+    data: sandboxData,
+    error,
+    isLoading,
+    refetch,
+  } = useFetch({
+    auto: true,
+    url: slug ? `/api/sandbox/${slug}` : '',
+    method: 'GET',
+    onSuccess: (res) => {
+      intialization(res)
+    }
+  });
+
+  const { refetch: saveSandbox, isLoading: saving } = useFetch({
+    url: `/api/sandbox/${slug}`,
+    method: 'PATCH',
+    onSuccess: (res) => {
+      toast.success(res.message || 'Sandbox Saved')
+    },
+    onError: (err) => {
+      toast.error(err.message || 'Failed to save sandbox')
+    },
+  });
+
+
+  const intialization = async (res) => {
+    if (!res.zipData) {
+      console.warn('No zipData in sandbox');
+      return;
+    }
+
+    const { files: extractedFiles, imageUrls } = await extractFilesFromZipData(res.zipData);
+
+    // Store into state
+    setFiles(extractedFiles);
+    setImageUrls(imageUrls);
+    setFileTree(buildTree(extractedFiles));
+
+    // ---- ✅ CONTINUE TO BOOT WEB CONTAINER ----
+    if (webcontainerInstance) {
+      await webcontainerInstance.teardown();
+    }
+    let instance = webcontainerInstance;
+    if (!instance) {
+      instance = await bootWebContainer(extractedFiles);
+    }
+    if (!instance) throw new Error("Failed to boot WebContainer");
+
+    const entry = entryCandidates.find((f) => extractedFiles[f.toLowerCase()]);
+    if (!entry) throw new Error("No entry file found.");
+    setEntryFile(entry);
+    setFileContent(extractedFiles[entry]);
+    // 3. Install dependencies
+    setStatusStep('Installing dependencies...');
+    const install = await instance.spawn('npm', ['install']);
+    install.output.pipeTo(new WritableStream({
+      write(data) {
+        bufferedLog(`[npm install]: ${data}`);
+      }
+    }));
+    await install.exit;
+
+    // 4. Install required deps for R3F/GSAP/Three
+    setStatusStep('Installing 3D libraries...');
+    const extraInstall = await instance.spawn('npm', [
+      'install',
+      '@react-three/drei@^9.122.0',
+      '@react-three/fiber@^8.18.0',
+      'three@^0.160.1',
+      'gsap@^3.12.5'
+    ]);
+    extraInstall.output.pipeTo(new WritableStream({
+      write(data) {
+        bufferedLog(`[extra]: ${data}`);
+      }
+    }));
+    await extraInstall.exit;
+
+    // 5. Start dev server
+    setStatusStep('Starting development server...');
+    instance.on('server-ready', (port, url) => {
+      setStatusStep('Server is ready!');
+      setPreviewUrl(url);
+      setLoading(false);
+    });
+
+
+    const devServer = await instance.spawn('npm', ['run', 'dev']);
+  }
+
+
+
+
+  const bootWebContainer = async (filesToWrite) => {
+    if (webcontainerInstance) {
+      console.log('[WebContainer] Already booted');
+      return webcontainerInstance;
+    }
+
+    if (hasBootedRef.current) {
+      console.warn('WebContainer already booted');
+      return webcontainerInstance;
+    }
+
     hasBootedRef.current = true;
 
-    const setupSandbox = async () => {
-      try {
-        setLoading(true);
+    const instance = await WebContainer.boot();
+    setWebcontainerInstance(instance);
+    setStatusStep('WebContainer Booted...');
 
-        // 1. Fetch and unzip repo
-        const res = await fetch(`/api/fetch-repo?repo=${repo}`);
-        const blob = await res.blob();
-        const zip = await blob.arrayBuffer();
-        const JSZip = (await import('jszip')).default;
-        const zipContent = await JSZip.loadAsync(zip);
-
-        const textExtensions = ['.js', '.jsx', '.ts', '.tsx', '.json', '.css', '.html', '.md'];
-        const binaryExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico'];
-
-        const getExtension = (filename) => {
-          const parts = filename.split('.');
-          return parts.length > 1 ? `.${parts.pop().toLowerCase()}` : '';
-        };
-
-        const files = {};
-        await Promise.all(
-          Object.keys(zipContent.files).map(async (filename) => {
-            const file = zipContent.files[filename];
-            if (!file.dir) {
-              const shortName = filename.split('/').slice(1).join('/');
-              const ext = getExtension(shortName);
-              if (textExtensions.includes(ext)) {
-                files[shortName] = await file.async('string');
-              } else if (binaryExtensions.includes(ext)) {
-                files[shortName] = await file.async('uint8array');
-                const url = URL.createObjectURL(new Blob([files[shortName]]));
-                setImageUrls((prev) => ({ ...prev, [shortName]: url }));
-              } else {
-                files[shortName] = await file.async('string');
-              }
-            }
-          })
-        );
-
-        setFiles(files);
-        setFileTree(buildTree(files));
-
-        // 2. Boot WebContainer
-        if (webcontainerInstance) {
-          await webcontainerInstance.teardown(); // Clean up previous instance if exists
-
-        };
-        const instance = await WebContainer.boot();
-        setWebcontainerInstance(instance);
-
-        for (const [name, content] of Object.entries(files)) {
-          const pathParts = name.split('/');
-          if (pathParts.length > 1) {
-            const dirPath = '/' + pathParts.slice(0, -1).join('/');
-            await instance.fs.mkdir(dirPath, { recursive: true });
-          }
-          await instance.fs.writeFile('/' + name, content ?? '');
-        }
-
-        const entry = entryCandidates.find((f) => files[f.toLowerCase()]);
-        if (!entry) throw new Error("No entry file found.");
-        setEntryFile(entry);
-        setFileContent(files[entry]);
-
-        // 3. Install dependencies
-        const install = await instance.spawn('npm', ['install']);
-        await install.exit;
-
-        const extraInstall = await instance.spawn('npm', [
-          'install',
-          '@react-three/drei@^9.122.0',
-          '@react-three/fiber@^8.18.0',
-          'three@^0.160.1',
-          'gsap@^3.12.5'
-        ]);
-        await extraInstall.exit;
-
-        // 4. Run dev server
-        instance.on('server-ready', (port, url) => {
-          setPreviewUrl(url);
-          setLoading(false);
-        });
-
-        const devServer = await instance.spawn('npm', ['run', 'dev']);
-
-      } catch (err) {
-        console.error(err);
-        setError('Failed to set up the sandbox. See console.');
-        setLoading(false);
+    for (const [name, content] of Object.entries(filesToWrite)) {
+      if (!name || name.endsWith('/')) {
+        console.warn(`Skipping invalid or directory entry: "${name}"`);
+        continue;
       }
-    };
 
-    setupSandbox();
-  }, [repo]);
+      // Ensure parent directory exists
+      const pathParts = name.split('/');
+      if (pathParts.length > 1) {
+        const dirPath = '/' + pathParts.slice(0, -1).join('/');
+        await instance.fs.mkdir(dirPath, { recursive: true });
+      }
+
+      // Write file safely
+      await instance.fs.writeFile('/' + name, content ?? '');
+    }
+
+    return instance;
+  };
+
 
 
   useEffect(() => {
-    if (!webcontainerInstance || !entryFile) return;
-
-    const runDevServer = async () => {
-      const install = await webcontainerInstance.spawn('npm', ['install']);
-      install.output.pipeTo(new WritableStream({
-        write(data) {
-          setConsoleLogs(`[npm install] ${stripAnsi(data)}`);
-        }
-      }));
-
-      await install.exit;
-
-      //  Install required dependencies for 3D rendering
-      const extraInstall = await webcontainerInstance.spawn('npm', [
-        'install',
-        '@react-three/drei@^9.122.0',
-        '@react-three/fiber@^8.18.0',
-        'three@^0.160.1',
-        'gsap@^3.12.5'
-      ]);
-      extraInstall.output.pipeTo(new WritableStream({
-        write(data) {
-          setConsoleLogs(`[Setup Install] ${stripAnsi(data)}`);
-        }
-      }));
-
-      await extraInstall.exit;
-
-
-      webcontainerInstance.on('server-ready', (port, url) => {
-        setPreviewUrl(url);
-      });
-
-
-
-      const devServer = await webcontainerInstance.spawn('npm', ['run', 'dev']);
-      devServer.output.pipeTo(new WritableStream({
-        write(data) {
-          setConsoleLogs(`\n[vite dev] ${stripAnsi(data)}`);
-        }
-      }));
-
-
-
-      return () => {
-        if (devServer) {
-          devServer.kill();
-        }
-        if (install) {
-          install.kill();
-        }
-      };
-    };
-
-    runDevServer();
-
     return () => {
-      document.body.classList.remove('overflow-hidden', 'no-scrollbar');
       if (webcontainerInstance) {
         webcontainerInstance.teardown();
+        setWebcontainerInstance(null);
+        hasBootedRef.current = false;
       }
-    }
-  }, [webcontainerInstance, entryFile]);
+    };
+  }, []);
+
+
+
+
 
 
   const handleFileSelect = async (filePath) => {
@@ -423,6 +447,12 @@ const SandboxPage = () => {
     }
   }, [isEdit, webcontainerInstance])
 
+  const handleSaveClick = async () => {
+    const zipData = await convertFilesToZipData(files);
+    saveSandbox({
+      payload: { zipData, modelID: modelInfo._id },
+    });
+  };
 
   return (
 
@@ -439,10 +469,11 @@ const SandboxPage = () => {
       )}
 
       {loading ? (
-        <Loader fullScreen
-          text={<div className='text-center space-y-2'>Installing deps for {repo}
-            <br />
-            <p className='text-muted-foreground pt-2 opacity-80'>{consoleLogs && `${consoleLogs}`}</p></div>}
+        <Loader
+          fullScreen
+          statusStep={statusStep}
+          logs={consoleLogs}
+          onRetry={() => window.location.reload()}
         />
       ) :
         (<>
@@ -458,7 +489,7 @@ const SandboxPage = () => {
                 <Button size="sm">Add Model.jsx</Button>
               </DialogTrigger>
               <AddModelModal
-                setModelPath={setModelPath}
+                setModelInfo={setModelInfo}
                 webcontainerInstance={webcontainerInstance}
                 setFiles={setFiles}
                 files={files}
@@ -466,6 +497,9 @@ const SandboxPage = () => {
               />
             </Dialog>
 
+            <Button onClick={handleSaveClick} disabled={saving} size='sm'>
+              {saving ? 'Saving...' : 'Save Sandbox'}
+            </Button>
             <Button onClick={handleDownloadZip} size='sm'>
               Download ZIP
             </Button>
@@ -484,7 +518,7 @@ const SandboxPage = () => {
           {webcontainerInstance && <section className={`sandbox-preview relative w-full h-full ${!isEdit ? 'block' : 'hidden'}`}>
             <SandboxPreview logs={consoleLogs} url={previewUrl} webcontainerInstance={webcontainerInstance} />
             {(previewUrl) && <FloatingPanel
-              modelPath={modelPath}
+              modelPath={modelInfo.url}
               files={files}
               setFiles={setFiles}
               setFileTree={setFileTree}
@@ -535,6 +569,7 @@ const SandboxPage = () => {
                           setFiles(prev => ({ ...prev, [selectedFile]: newCode }));
                         }
                       }}
+
                       options={{
                         minimap: { enabled: false },
                         fontSize: 14,

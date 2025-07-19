@@ -22,7 +22,7 @@ const Loader = ({
                     spinnerClassName
                 )}
             ></div>
-            <p className={cn('mt-2', color)}>{text}</p>
+            <div className={cn('mt-2', color)}>{text}</div>
         </div>
     )
 }

@@ -27,7 +27,7 @@ const FormField = ({
 
   return (
     <div className={clsx("grid w-full gap-1", parentClass)}>
-      {label && <Label htmlFor={id}>{label}</Label>}
+      {label && <Label htmlFor={id} className='pb-1'>{label}</Label>}
 
       <div className="relative w-full ">
         {icon && (

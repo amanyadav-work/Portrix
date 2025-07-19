@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import { verifyToken } from './utils/verifyToken';
 
 const PUBLIC_ONLY_ROUTES = ['/login', '/register'];
 const PUBLIC_ROUTES = ['/']; // Add more if needed
@@ -7,20 +8,9 @@ const AUTH_COOKIE_NAME = 'authToken';
 
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
-  const token = req.cookies.get(AUTH_COOKIE_NAME)?.value;
 
-  let isAuthenticated = false;
-
-  if (token) {
-    try {
-      await jwtVerify(token, new TextEncoder().encode(process.env.JWT_SECRET));
-      isAuthenticated = true;
-    } catch (err) {
-      console.warn('[Middleware] Token verification failed:', err.message);
-    }
-  } else {
-    console.log('[Middleware] No auth token found.');
-  }
+  const payload = await verifyToken(req);
+  const isAuthenticated = Boolean(payload);
 
   const isPublic = PUBLIC_ROUTES.includes(pathname);
   const isPublicOnly = PUBLIC_ONLY_ROUTES.includes(pathname);

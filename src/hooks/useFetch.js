@@ -1,5 +1,4 @@
 'use client';
-import { getToken } from '@/lib/utils';
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 export default function useFetch({
@@ -60,24 +59,26 @@ export default function useFetch({
     try {
       const finalHeaders = { ...reqHeaders };
 
-      if (reqWithAuth) {
-        const token = getToken();
-        if (!token) return null;
-        finalHeaders['Authorization'] = `Bearer ${token}`;
-      }
 
       const isFormData = reqPayload instanceof FormData;
       if (!isFormData && reqMethod !== 'GET') {
         finalHeaders['Content-Type'] = 'application/json';
       }
 
-      const response = await fetch(reqUrl, {
+      const fetchOptions = {
         method: reqMethod,
         headers: finalHeaders,
         body: reqMethod !== 'GET'
           ? (isFormData ? reqPayload : JSON.stringify(reqPayload))
           : undefined,
-      });
+      };
+
+      // ✅ Conditionally include credentials (for HTTP-only auth cookies)
+      if (reqWithAuth) {
+        fetchOptions.credentials = 'include';
+      }
+
+      const response = await fetch(reqUrl, fetchOptions);
 
       const isJson = response.headers.get('content-type')?.includes('application/json');
       const result = isJson ? await response.json() : await response.text();

@@ -17,7 +17,7 @@ import { Box, UserIcon, UserSquare2 } from 'lucide-react'
 import { useUser } from '@/contexts/UserContext'
 import AutoBreadcrumbs from './ui/AutoBreadCrumps'
 
-const Header = () => {
+const Header = ({className,...props}) => {
   const router = useRouter()
   const { user, isLoading } = useUser()
   const pathname = usePathname();
@@ -32,7 +32,7 @@ const Header = () => {
   }
 
   return (
-    <header className="navbar-dark w-full flex justify-between items-center z-40 h-[64px] border-b">
+    <header className={`navbar-dark w-full flex justify-between items-center z-40 py-4 border-b ${className}`} {...props}>
       <div className="my-container mx-auto flex justify-between items-center w-full">
         {/* Logo */}
         <h1 className="text-[13px] font-semibold">
@@ -106,7 +106,7 @@ const UserDropdown = ({ user }) => {
         )}
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent className="w-56 p-2 bg-surface text-text shadow-xl border border-muted">
+      <DropdownMenuContent className="w-56 p-2 !bg-background text-text shadow-xl border border-muted">
         {/* User Info */}
         <div className="px-2 py-1.5">
           <p className="text-sm font-medium truncate">{user.name}</p>

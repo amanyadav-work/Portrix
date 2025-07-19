@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { cn, setToken } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,6 +42,7 @@ const onSubmit = async (formValues) => {
   const payload = {
     email: formValues.email,
     password: formValues.password,
+    rememberMe
   };
 
   if (isSignup) {
@@ -51,12 +52,12 @@ const onSubmit = async (formValues) => {
   refetch({
     payload, 
     onSuccess: (result) => {
-      if (result?.user && result?.jwttoken) {
-        setToken(result.jwttoken, result.user._id, rememberMe);
-        console.log("User logged in:",result);
+      if (result?.user) {
         setUser(result.user);
+        console.log("User logged in:",result);
         router.push("/dashboard");
       } else {
+        console.error("Unexpected response format:", result);
         toast.error("Something went wrong");
       }
     },

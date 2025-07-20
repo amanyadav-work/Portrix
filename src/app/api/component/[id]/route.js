@@ -11,10 +11,7 @@ export async function GET(request, { params }) {
 
     const Component = mongoose.connection.collection('components')
 
-    // _id in Mongo is an ObjectId, so you may need to convert id to ObjectId first:
-    const objectId = new mongoose.Types.ObjectId(id)
-
-    const doc = await Component.findOne({ _id: objectId })
+    const doc = await Component.findOne({ _id: id })
 
     if (!doc) {
       return sendErrorResponse({ code: 'not_found', message: 'Component not found', status: 404 })

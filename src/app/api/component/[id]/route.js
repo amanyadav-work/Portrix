@@ -1,24 +1,28 @@
 import { NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { dbConnect } from '@/lib/mongoose'
+import { sendErrorResponse } from './path-to-sendErrorResponse' // adjust import path accordingly
 
 export async function GET(request, { params }) {
-    const { id } = PathParamsContext
+  const { id } = params  
 
-    try {
-        await dbConnect()
+  try {
+    await dbConnect()
 
-        const Component = mongoose.connection.collection('components')
+    const Component = mongoose.connection.collection('components')
 
-        const doc = await Component.findOne({ _id: id })
+    // _id in Mongo is an ObjectId, so you may need to convert id to ObjectId first:
+    const objectId = new mongoose.Types.ObjectId(id)
 
-        if (!doc) {
-            return NextResponse.json({ error: 'Component not found' }, { status: 404 })
-        }
+    const doc = await Component.findOne({ _id: objectId })
 
-        return NextResponse.json({ code: doc.code })
-    } catch (error) {
-        console.error('Error fetching component:', error)
-        return NextResponse.json({ error: 'Error fetching component', details: error.message }, { status: 500 })
+    if (!doc) {
+      return sendErrorResponse({ code: 'not_found', message: 'Component not found', status: 404 })
     }
+
+    return NextResponse.json({ code: doc.code })
+  } catch (error) {
+    console.error('Error fetching component:', error)
+    return sendErrorResponse({ code: 'internal_error', message: 'Error fetching component', status: 500 })
+  }
 }

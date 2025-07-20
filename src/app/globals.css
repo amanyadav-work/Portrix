@@ -76,6 +76,7 @@ body {
 
 body {
   font-family: var(--font-outfit);
+  user-select: none;
 }
 
 /* In your global CSS file */

@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET(req, { params }) {
   const { slug } = params
-// Extract JWT payload from cookie token
+  // Extract JWT payload from cookie token
   const payload = await verifyToken(req);
 
   if (!payload) {
@@ -25,7 +25,7 @@ export async function GET(req, { params }) {
   try {
     await dbConnect()
 
-    const sandbox = await Sandbox.findOne({ slug }).lean()
+    const sandbox = await Sandbox.findOne({ slug }).populate('modelID').lean();
 
     if (!sandbox) {
       return sendErrorResponse({
@@ -40,10 +40,12 @@ export async function GET(req, { params }) {
       ? sandbox.zipData.toString('base64')
       : null
 
+      const { modelID, ...rest } = sandbox;
     // Return all sandbox data + base64 encoded zip
     return NextResponse.json({
-      ...sandbox,
+      ...rest,
       zipData: zipDataBase64,
+      modelInfo: modelID, // Include model info if populated
     })
   } catch (err) {
     console.error('[GET SANDBOX ERROR]', err)
@@ -93,7 +95,7 @@ export async function PATCH(req, { params }) {
     }
 
     const payload = await req.json();
-    const { name, description, zipData,modelID } = payload;
+    const { name, description, zipData, modelID } = payload;
 
     await dbConnect();
 
@@ -108,7 +110,7 @@ export async function PATCH(req, { params }) {
 
     if (name) sandbox.name = name;
     if (description) sandbox.description = description;
-    if(modelID) sandbox.modelID = modelID;
+    if (modelID) sandbox.modelID = modelID;
 
 
     if (zipData) {

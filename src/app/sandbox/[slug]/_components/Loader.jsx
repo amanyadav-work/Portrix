@@ -32,13 +32,7 @@ export default function Loader({ fullScreen = false, statusStep = '', logs = '',
 
         {showLogs && (
           <div className="max-h-64 w-full md:w-[600px] overflow-y-auto bg-black text-green-400 text-xs p-4 rounded border border-gray-700 font-mono text-left shadow-inner">
-            {logs
-              ?.split('\n')
-              .filter(Boolean)
-              .slice(-40) // last 40 lines
-              .map((line, idx) => (
-                <div key={idx}>{line}</div>
-              ))}
+            {logs}
           </div>
         )}
 

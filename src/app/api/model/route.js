@@ -26,7 +26,7 @@ export async function GET(req) {
 
     const models = await Model.find({ userID }).sort({ createdAt: -1 });
 
-    return NextResponse.json({ ...models });
+    return NextResponse.json(models);
   } catch (err) {
     console.error('[FETCH MODELS ERROR]', err);
     return sendErrorResponse({

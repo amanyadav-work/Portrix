@@ -108,6 +108,7 @@ const SandboxPage = () => {
     method: 'GET',
     onSuccess: (res) => {
       intialization(res)
+      console.log('Sandbox data loaded:', res);
     }
   });
 
@@ -340,107 +341,7 @@ const SandboxPage = () => {
     window.scrollTo(0, 0);
 
     if (isEdit) {
-      if (webcontainerInstance) {
-        const updatedData = {
-          "sec-1": {
-            "name": "sec-1",
-            "modelTransform": {
-              "posX": 1.9999999999999991,
-              "posY": 0,
-              "posZ": 3.9000000000000004,
-              "rotX": 0,
-              "rotY": 0,
-              "rotZ": 0
-            },
-            "background": {
-              "type": "solid",
-              "color1": "#580000",
-              "color2": "#350000"
-            },
-            "lights": [
-              {
-                "id": 1751443059446.0015,
-                "type": "Directional",
-                "intensity": 25,
-                "color": "#ff3300",
-                "position": [
-                  2,
-                  5,
-                  3
-                ],
-                "castShadow": false,
-                "angle": 0,
-                "penumbra": 0,
-                "distance": 0,
-                "decay": 1
-              },
-              {
-                "id": 1751443059446.1401,
-                "type": "Ambient",
-                "intensity": 28,
-                "color": "#803030",
-                "position": [
-                  0,
-                  0,
-                  0
-                ],
-                "castShadow": false,
-                "angle": 0,
-                "penumbra": 0,
-                "distance": 0,
-                "decay": 1
-              }
-            ],
-            "selectedAnimation": "01_Sphere_bot_Roll",
-            "loopCount": "Infinity"
-          },
-          "sec-2": {
-            "name": "sec-2",
-            "modelTransform": {
-              "posX": 3.0000000000000004,
-              "posY": 0,
-              "posZ": 0,
-              "rotX": 0,
-              "rotY": 0,
-              "rotZ": 0
-            },
-            "background": {
-              "type": "solid",
-              "color1": "#131313",
-              "color2": "#350000"
-            },
-            "lights": [
-              {
-                "id": 1751443133070.8755,
-                "type": "Directional",
-                "intensity": 9.3,
-                "color": "#ffffff",
-                "position": [
-                  88.7,
-                  56.1,
-                  0
-                ],
-                "castShadow": false,
-                "angle": 0,
-                "penumbra": 0,
-                "distance": 0,
-                "decay": 1
-              }
-            ],
-            "selectedAnimation": "Idle",
-            "loopCount": "Infinity"
-          }
-        }
-
-        updateSceneSettingsFile({
-          webcontainerInstance,
-          updatedData: updatedData,
-          setFiles,
-          files,
-          setFileTree,
-          buildTree,
-        });
-      }
+     
       document.body.classList.remove('overflow-hidden', 'no-scrollbar');
     } else {
       document.body.classList.add('overflow-hidden', 'no-scrollbar');
@@ -503,15 +404,7 @@ const SandboxPage = () => {
             <Button onClick={handleDownloadZip} size='sm'>
               Download ZIP
             </Button>
-            <Button size='sm'>
-              <Link
-                href={`/webcontainer/connect/${encodeURIComponent(previewUrl)}`}
-                size="sm"
-                target="_blank"
-              >
-                Show Preview
-              </Link>
-            </Button>
+         
 
           </div>}
           {/* Sandbox Preview  */}

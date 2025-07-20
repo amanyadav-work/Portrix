@@ -4,12 +4,38 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { updateSceneSettingsFile } from "@/utils/sandbox";
 import { createReactiveObject, defaultSectionState, getAllAnimationNames, lightPropsByType, normalizeLightType } from "@/utils/tweakpane";
-import { Move, Plus } from "lucide-react";
+import { Lock, Move, Plus } from "lucide-react";
 import ScrollShadow from "@/components/ScrollShadow";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import FormField from "@/components/ui/FormField";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Sheet, SheetTrigger } from "@/components/ui/sheet";
+import EditSheetContent from "../[slug]/_components/EditSheet";
+
+const schema = z.object({
+  name: z.string().min(1, "Name is required"),
+  lightCount: z.coerce.number().int().min(0).max(10),
+});
 
 
-export default function Tweakpane({ modelPath, files,
+export default function Tweakpane({
+  dragEnabled,
+  setDragEnabled,
+  modelPath, files,
   setFiles,
   setFileTree,
   buildTree,
@@ -17,6 +43,84 @@ export default function Tweakpane({ modelPath, files,
   selectedSectionKey, setSelectedSectionKey,
   setDialogOpen,
   webcontainerInstance }) {
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors }
+  } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: sections[selectedSectionKey]?.name ?? "",
+      lightCount: sections[selectedSectionKey]?.lights?.length ?? 0
+    }
+  });
+
+
+  const onSubmit = (data) => {
+    setSections((prev) => {
+      const current = prev[selectedSectionKey];
+      const newKey = data.name;
+      const currentLights = current.lights ?? [];
+      const currentLength = currentLights.length;
+      const targetLength = data.lightCount;
+
+      let newLights;
+
+      if (targetLength > currentLength) {
+        const toAdd = Array(targetLength - currentLength).fill(0).map(() => ({
+          id: Date.now() + Math.random(),
+          type: "Directional",
+          intensity: 1,
+          color: "#ffffff",
+          position: [0, 0, 0],
+          castShadow: false,
+          angle: 0,
+          penumbra: 0,
+          distance: 0,
+          decay: 1,
+        }));
+        newLights = [...currentLights, ...toAdd];
+      } else if (targetLength < currentLength) {
+        newLights = currentLights.slice(0, targetLength); // delete from the end
+      } else {
+        newLights = currentLights;
+      }
+
+      // If name didn't change
+      if (newKey === selectedSectionKey) {
+        return {
+          ...prev,
+          [selectedSectionKey]: {
+            ...current,
+            name: data.name,
+            lights: newLights,
+          },
+        };
+      }
+
+      // Name changed = key change
+      const { [selectedSectionKey]: _, ...rest } = prev;
+
+      return {
+        ...rest,
+        [newKey]: {
+          ...current,
+          name: newKey,
+          lights: newLights,
+        },
+      };
+    });
+
+    setSelectedSectionKey(data.name);
+    reset({
+      name: data.name,
+      lightCount: (sections[data.name] ?? sections[selectedSectionKey])?.lights?.length ?? 0,
+    });
+  };
+
+
 
   const [animations, setAnimations] = useState(["Idle", "Walk", "Run", "Jump"])
 
@@ -51,6 +155,13 @@ export default function Tweakpane({ modelPath, files,
         console.error("Failed to load animations:", error);
       });
   }, [modelPath])
+
+  useEffect(() => {
+    reset({
+      name: sections[selectedSectionKey]?.name ?? "",
+      lightCount: sections[selectedSectionKey]?.lights?.length ?? 0,
+    });
+  }, [selectedSectionKey, reset, sections]);
 
 
   useEffect(() => {
@@ -251,32 +362,9 @@ export default function Tweakpane({ modelPath, files,
     setSelectedSectionKey(e.target.value);
   };
 
+  console.log(selectedSectionKey, sections)
 
 
-  const addLight = () => {
-    setSections((prev) => {
-      const current = prev[selectedSectionKey];
-      const newLight = {
-        id: Date.now() + Math.random(),
-        type: "Directional",
-        intensity: 1,
-        color: "#ffffff",
-        position: [0, 0, 0],
-        castShadow: false,
-        angle: 0,
-        penumbra: 0,
-        distance: 0,
-        decay: 1,
-      };
-      return {
-        ...prev,
-        [selectedSectionKey]: {
-          ...current,
-          lights: [...current.lights, newLight],
-        },
-      };
-    });
-  };
 
   const exportJson = () => {
     const jsonStr = JSON.stringify(sections, null, 2);
@@ -295,36 +383,71 @@ export default function Tweakpane({ modelPath, files,
       <div className="flex items-center justify-between rounded-t-md">
         <div className="w-full flex items-center gap-2">
 
-          <select
+          <Select
             value={selectedSectionKey}
-            onChange={onSectionChange}
-            className="text-gray-900 bg-white border border-gray-300 hover:bg-gray-100 focus:ring-2 focus:ring-gray-100 font-medium rounded-md text-xs px-2 py-1 cursor-pointer dark:bg-gray-800 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700 dark:hover:border-gray-600 dark:focus:ring-gray-700"
-            aria-label="Select Section"
+            onValueChange={setSelectedSectionKey}
           >
-            {Object.entries(sections).map(([key, section]) => (
-              <option key={key} value={key}>
-                {section.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full select-none text-xs">
+              <SelectValue placeholder="Select Section" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(sections).map(([key, section]) => (
+                <SelectItem key={key} value={key}>
+                  {section.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Button
             onClick={() => setDialogOpen(true)}
-            size='sm'
             title="Add Section"
           >
-            Section  <Plus size={12} />
+            <Plus size={15} />
           </Button>
 
-          <Button
-            onClick={addLight}
-            disabled={!selectedSectionKey}
-            size='sm'
-            title="Add Light"
-          >
-            Light <Plus size={12} />
-          </Button>
 
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                title="Edit Section"
+              >
+                <Plus size={15} />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-3" onKeyDown={(e) => {
+                if (e.key === 'Enter') e.preventDefault();
+              }}>
+                <FormField
+                  id="name"
+                  label="Section Name"
+                  register={register}
+                  errors={errors}
+                />
+
+                <FormField
+                  id="lightCount"
+                  label="Number of Lights to Add"
+                  register={register}
+                  errors={errors}
+                  type="number"
+                  min={0}
+                  max={10}
+                />
+
+                <Button type="submit" size="sm" className="w-full">
+                  Save Changes
+                </Button>
+              </form>
+            </PopoverContent>
+          </Popover>
+
+
+          <Sheet>
+            <SheetTrigger> <Plus size={15} /></SheetTrigger>
+            <EditSheetContent />
+          </Sheet>
           <Button
             onClick={exportJson}
             title="Export Config"
@@ -334,17 +457,20 @@ export default function Tweakpane({ modelPath, files,
           </Button>
         </div>
 
-        <Button
-          className="drag-handle cursor-move"
-          title="Drag btn"
-          size='sm'
+        <Button v
+          onClick={() => setDragEnabled((prev) => !prev)}
+          className={`${dragEnabled ? "bg-transparent text-background" : "bg-muted text-foreground"} h-full hover:bg-muted/20`}
+          title={dragEnabled ? "Disable Drag" : "Enable Drag"}
+          size="sm"
         >
-          <Move size={12} />
+          {dragEnabled ? <Move size={16} /> : <Lock size={16} />}
         </Button>
+
+
       </div>
 
       {/* Tweakpane container */}
-      <ScrollShadow className="h-96 w-full no-scrollbar overflow-auto">
+      <ScrollShadow className="border rounded-sm w-full no-scrollbar overflow-auto">
         <div ref={containerRef} className="h-96" />
       </ScrollShadow>
     </>

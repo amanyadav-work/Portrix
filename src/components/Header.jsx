@@ -66,7 +66,7 @@ const Header = ({className,...props}) => {
             {!isLoading && user ? (
               <>
                 <UserDropdown user={user} />
-                <Link href="/sandbox?repo=amanyadav-work/news-app">
+                <Link href="/projects">
                   <Button size='md' className="hidden lg:block">{user ? 'Go to dashbaord' : 'Try Visual Editor'}</Button>
                 </Link>
               </>

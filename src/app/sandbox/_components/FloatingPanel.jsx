@@ -9,7 +9,6 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
-import Draggable from 'react-draggable';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Tweakpane from "./SceneControls";
+import { Rnd } from "react-rnd";
 
 const sectionSchema = z.object({
     id: z
@@ -32,6 +32,8 @@ const FloatingPanel = ({ modelPath, files,
     setFileTree,
     buildTree,
     webcontainerInstance }) => {
+    const [dragEnabled, setDragEnabled] = useState(true);
+
     const [dialogOpen, setDialogOpen] = useState(false);
     const [inputValue, setInputValue] = useState("");
     const dragRef = useRef(null); // 1. Create a ref
@@ -74,26 +76,65 @@ const FloatingPanel = ({ modelPath, files,
 
         setSelectedSectionKey(id);
         setDialogOpen(false);
+        setDragEnabled(false); // Disable dragging after creating a section
         reset();
     };
 
     return (
         <>
-            <Draggable bounds="parent" nodeRef={dragRef} handle=".drag-handle">
-                <div ref={dragRef}
-                    className="absolute top-20 right-20 z-50 text-gray-800 shadow-lg rounded-md w-[320px]"
-                >
+
+            <Rnd
+                default={{
+                    x: 150,
+                    y: 200,
+                    width: 400,
+                }}
+                disableDragging={!dragEnabled}
+                minWidth={350}
+                minHeight={200}
+                bounds="window"
+                enableResizing={{
+                    bottom: false,
+                    bottomRight: true,
+                    bottomLeft: false,
+                    top: false,
+                    topRight: false,
+                    topLeft: false,
+                    left: false,
+                    right: false,
+                }}
+                className="z-50 fixed"
+            >
+                <div className="h-full w-full bg-[#37383D] shadow-xl rounded-md p-4 flex flex-col gap-2 overflow-auto">
                     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                        {Object.keys(sections).length === 0 && <div className="h-fit rounded-md bg-white p-4 flex flex-col gap-2 drag-handle cursor-move">
-                            <h2 className="text-lg font-semibold">Scene Controls</h2>
-                            <p className="text-sm text-gray-500">Manage your 3D scene sections and files.</p>
-                            <DialogTrigger asChild>
-                                <Button size="sm" disabled={Object.keys(sections).length > 0}>
-                                    Create Section
-                                </Button>
-                            </DialogTrigger>
-                        </div>
-                        }
+                        {Object.keys(sections).length === 0 ? (
+                            <div className="flex flex-col gap-3">
+                                <h2 className="text-lg font-semibold text-background/60">Scene Controls</h2>
+                                <p className="text-sm text-gray-500">Manage your 3D scene sections and files.</p>
+                                <DialogTrigger asChild>
+                                    <Button size="sm" disabled={Object.keys(sections).length > 0}>
+                                        Create Section
+                                    </Button>
+                                </DialogTrigger>
+                            </div>
+                        ) : (
+                            <Tweakpane
+                                dragEnabled={dragEnabled}
+                                setDragEnabled={setDragEnabled}
+                                modelPath={modelPath}
+                                files={files}
+                                setFiles={setFiles}
+                                setFileTree={setFileTree}
+                                buildTree={buildTree}
+                                setDialogOpen={setDialogOpen}
+                                webcontainerInstance={webcontainerInstance}
+                                sections={sections}
+                                setSections={setSections}
+                                selectedSectionKey={selectedSectionKey}
+                                setSelectedSectionKey={setSelectedSectionKey}
+                            />
+                        )}
+
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Create First Section</DialogTitle>
@@ -114,26 +155,11 @@ const FloatingPanel = ({ modelPath, files,
                                 </DialogFooter>
                             </form>
                         </DialogContent>
-
                     </Dialog>
-                    {sections && 
-                        Object.keys(sections).length > 0
-                        && <Tweakpane
-                            modelPath={modelPath}
-                            files={files}
-                            setFiles={setFiles}
-                            setFileTree={setFileTree}
-                            buildTree={buildTree}
-                            setDialogOpen={setDialogOpen}
-                            webcontainerInstance={webcontainerInstance}
-                            sections={sections}
-                            setSections={setSections}
-                            selectedSectionKey={selectedSectionKey}
-                            setSelectedSectionKey={setSelectedSectionKey}
-                        />}
                 </div>
-            </Draggable>
+            </Rnd>
         </>
+
 
     )
 }

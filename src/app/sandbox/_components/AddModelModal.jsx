@@ -10,11 +10,13 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { handleAddSceneRendererFile, handleInjectSceneRenderer } from '@/utils/sandbox';
+import { handleAddSceneRendererFile, handleInjectRenderScriptToIndexHtml, handleInjectSceneRenderer } from '@/utils/sandbox';
 import useFetch from '@/hooks/useFetch';
 import { DropzoneField } from '@/components/DropzoneField';
 import { useUser } from '@/contexts/UserContext';
 import Loader from '@/components/ui/Loader';
+import { cn } from '@/lib/utils';
+import { FileBoxIcon } from 'lucide-react';
 
 const AddModelModal = ({
   setModelInfo,
@@ -50,20 +52,7 @@ const AddModelModal = ({
       setModelInfo(result);
 
       try {
-        await handleAddSceneRendererFile({
-          webcontainerInstance,
-          setFiles,
-          files,
-          setFileTree,
-        });
-
-        await handleInjectSceneRenderer({
-          webcontainerInstance,
-          setFiles,
-          modelPath,
-          componentPath: './components/SceneRenderer.jsx',
-        });
-
+        await addFilesToWebContainer(modelPath);
         toast.success('Model added!');
         document.getElementById('btn-modal-popup-close')?.click();
       } catch (err) {
@@ -77,9 +66,21 @@ const AddModelModal = ({
     },
   });
 
+  const addFilesToWebContainer = async (modelPath) => {
+    if (!webcontainerInstance) return;
+    await handleInjectRenderScriptToIndexHtml({
+      webcontainerInstance,
+      files,
+      setFiles,
+      setFileTree,
+    });
+
+  };
+
   const handleAddModel = async () => {
     if (selectedModel) {
       setModelInfo(selectedModel);
+      await addFilesToWebContainer(selectedModel.url);
       document.getElementById('btn-modal-popup-close')?.click();
       return;
     }
@@ -110,37 +111,50 @@ const AddModelModal = ({
       <DialogHeader>
         <DialogTitle>Upload a .glb Model</DialogTitle>
       </DialogHeader>
-      {models?.length > 0 &&
-        <div className='grid grid-cols-4 gap-2 mb-4'>
-          {models?.map((model) => (
-            <div
-              key={model._id}
-              className="p-2 border rounded cursor-pointer hover:bg-gray-100"
-              onClick={() => {
-                setSelectedModel([{
-                  name: model.name,
-                  url: model.url,
-                }]);
-              }}
-            >
-              <img
-                src={model.thumbnail || '/placeholder-thumbnail.png'}
-                alt={model.name}
-                className="w-full h-32 object-cover mb-2"
-              />
-              <div className="text-sm font-medium">{model.name}</div>
-            </div>
-          ))}
+
+      {allModelLoading ? (
+        <div className="flex justify-center py-10">
+          <Loader size={24} />
         </div>
-      }
-      <div className="space-y-4">
-        <DropzoneField
-          accept={{ 'model/gltf-binary': ['.glb'] }}
-          multiple={false}
-          onDrop={setSelectedFiles}
-          value={selectedFiles}
-        />
-      </div>
+      ) : (
+        models?.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-5">
+            {models.map((model) => {
+              const isSelected = selectedModel?.url === model.url;
+              return (
+                <div
+                  key={model._id}
+                  onClick={() => setSelectedModel(model)}
+                  className={cn(
+                    'p-4 border rounded-md cursor-pointer flex flex-col items-center gap-2 transition-all duration-150',
+                    isSelected
+                      ? 'bg-muted border-primary text-primary'
+                      : 'hover:bg-accent hover:border-accent-foreground'
+                  )}
+                >
+                  <FileBoxIcon size={36} className="text-muted-foreground" />
+                  <span className="text-xs font-medium text-center truncate w-full">
+                    {model.name}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )
+      )}
+
+      <DropzoneField
+        accept={{ 'model/gltf-binary': ['.glb'] }}
+        multiple={false}
+        onDrop={setSelectedFiles}
+        value={selectedFiles}
+      />
+
+      {selectedFiles.length > 0 && (
+        <p className="text-xs mt-2 text-muted-foreground">
+          Selected file: <strong>{selectedFiles[0].name}</strong>
+        </p>
+      )}
 
       <DialogFooter className="pt-4">
         <DialogClose asChild id="btn-modal-popup-close">
@@ -148,7 +162,7 @@ const AddModelModal = ({
             Cancel
           </Button>
         </DialogClose>
-        <Button onClick={handleAddModel} disabled={addingModel}>
+        <Button onClick={handleAddModel} disabled={addingModel || (!selectedFiles.length && !selectedModel)}>
           {addingModel ? 'Uploading...' : 'Add Model'}
         </Button>
       </DialogFooter>

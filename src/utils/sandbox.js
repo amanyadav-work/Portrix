@@ -381,6 +381,82 @@ export default function ${componentName}() {
 };
 
 
+export const handleInjectRenderScriptToIndexHtml = async ({
+  webcontainerInstance,
+  files,
+  setFiles,
+  setFileTree,
+}) => {
+  if (!webcontainerInstance) return;
+
+  const indexPath = '/index.html';
+
+  try {
+    // Read existing index.html content
+    let indexContent = await webcontainerInstance.fs.readFile(indexPath, 'utf-8');
+
+    const scriptContent = `
+<script>
+  // Render function as you provided
+  function renderExternal() {
+    if (window.HelloWorld && window.React && window.ReactDOM) {
+      const containerId = 'external-component-container';
+      let container = document.getElementById(containerId);
+      if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        document.body.appendChild(container);
+      }
+      ReactDOM.render(
+        React.createElement(window.HelloWorld),
+        container
+      );
+    } else {
+      setTimeout(renderExternal, 50);
+    }
+  }
+  async function fetchAndRenderComponent(id = 'helloWorld') {
+    try {
+      const res = await fetch(\`${window.location.origin}/api/component/\${id}\`);
+      if (!res.ok) throw new Error(\`Failed to fetch component \${id}\`);
+      const data = await res.json();
+      const code = data.code; // JSX string
+      const compiledCode = Babel.transform(code, { presets: ['react'] }).code;
+      const exports = {};
+      const module = { exports };
+      const func = new Function('React', 'module', 'exports', compiledCode);
+      func(React, module, exports);
+      window.HelloWorld = module.exports.default;
+      renderExternal();
+    } catch (error) {
+      console.error('Error fetching or rendering component:', error);
+    }
+  }
+  fetchAndRenderComponent('helloWorld');
+</script>`;
+
+    // Inject the script before closing </body> tag if exists, else at the end
+    if (indexContent.includes('</body>')) {
+      indexContent = indexContent.replace('</body>', `${scriptContent}\n</body>`);
+    } else {
+      indexContent += scriptContent;
+    }
+
+    // Write back updated index.html
+    await webcontainerInstance.fs.writeFile(indexPath, indexContent);
+
+    // Update React state files + fileTree
+    setFiles((prevFiles) => {
+      const updatedFiles = { ...prevFiles, ['index.html']: indexContent };
+      setFileTree(buildTree(updatedFiles));
+      return updatedFiles;
+    });
+  } catch (error) {
+    console.error('Failed to inject render script into index.html:', error);
+  }
+};
+
+
 
 
 export const updateSceneSettingsFile = async ({

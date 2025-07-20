@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import mongoose from 'mongoose'
 import { dbConnect } from '@/lib/mongoose'
-import { sendErrorResponse } from './path-to-sendErrorResponse' // adjust import path accordingly
+import { sendErrorResponse } from '@/utils/sendErrorResponse'
 
 export async function GET(request, { params }) {
   const { id } = params  
